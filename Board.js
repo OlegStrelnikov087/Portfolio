@@ -1,110 +1,77 @@
 class Board {
     constructor() {
-        this.boardEl = document.getElementById('game');
+        this.gameTableElement = document.getElementById('game');
     }
 
     /**
-     * Метод получает другие игровые объекты, которые нужны ему
-     * для работы.
-     * @param {Settings} settings объект настроек.
-     * @param {Snake} snake объект змейки.
+     * @param {Game} game 
+     * @param {Status} status
      */
-    init(settings, snake) {
-        this.settings = settings;
-        this.snake = snake;
+    init(game, status) {
+        this.game = game;
+        this.status = status;
     }
 
     /**
-     * Метод отрисовывает игровое поле.
+     * Отрисовка игрового поля
      */
-    renderBoard() {
-        for (let row = 0; row < this.settings.rowsCount; row++) {
-            let tr = document.createElement('tr');
-            this.boardEl.appendChild(tr);
-
-            for (let col = 0; col < this.settings.colsCount; col++) {
+    renderMap() {
+        for (let row = 0; row < 3; row++) {
+            const tr = document.createElement('tr');
+            this.gameTableElement.appendChild(tr);
+            for (let col = 0; col < 3; col++) {
                 let td = document.createElement('td');
+                td.dataset.row = row.toString();
+                td.dataset.col = col.toString();
                 tr.appendChild(td);
             }
         }
     }
 
     /**
-     * Метод отрисовывает змейку на доске.
+     * Инициализация обработчиков событий.
      */
-    renderSnake() {
-        const snakeBodyElems = this.getSnakeBodyElems(this.snake.body);
-
-        snakeBodyElems.forEach(function (tdEl) {
-            tdEl.classList.add('snakeBody');
-        });
-    }
-
-    /** Метод очищает игровое поле от еды. */
-    clearFood() {
-        document.querySelector('.food').classList.remove('food');
-    }
-
-    clearSnake() {
-        const tdElems = document.querySelectorAll('.snakeBody');
-        tdElems.forEach(function (td) {
-            td.classList.remove('snakeBody');
-        });
+    initEventHandlers() {
+        // Ставим обработчик, при клике на таблицу вызовется функция this.cellClickHandler.
+        this.gameTableElement.addEventListener('click', event => this.game.cellClickHandler(event));
     }
 
     /**
-     * Получаем ячейку таблицы.
-     * @param {number} x координата по оси х.
-     * @param {number} y координата по оси y.
-     * @returns {HTMLTableCellElement} тег td
+     * Проверка что клик был по ячейке.
+     * @param {Event} event
+     * @param {HTMLElement} event.target
+     * @returns {boolean} Вернет true, если клик был по ячейке, иначе false.
      */
-    getCellEl(x, y) {
-        return this.boardEl.querySelector(`tr:nth-child(${y}) td:nth-child(${x})`);
+    isClickByCell(event) {
+        return event.target.tagName == 'TD';
     }
 
     /**
-     * Получаем набор тегов td, представляющих тело змейки.
-     * @param {Array} bodyCoords массив объектов с координатами
-     * @throws {Error} если координаты не будут переданы, то будет выброшена ошибка
-     * @returns {HTMLTableCellElement[]}
+     * Проверка что в ячейку не ставили значение (крестик или нолик).
+     * @param {Event} event
+     * @param {HTMLElement} event.target
+     * @returns {boolean} Вернет true, если ячейка пуста, иначе false.
      */
-    getSnakeBodyElems(bodyCoords) {
-        if (bodyCoords.length === 0) {
-            throw new Error("Не переданы координаты тела змейки.");
-        }
+    isCellEmpty(event) {
+        // Получаем строку и колонку куда кликнули.
+        let row = +event.target.dataset.row;
+        let col = +event.target.dataset.col;
 
-        let bodyElems = [];
-        for (let coordinate of bodyCoords) {
-            let td = this.getCellEl(coordinate.x, coordinate.y);
-            bodyElems.push(td);
-        }
-        return bodyElems;
+        return this.status.mapValues[row][col] === '';
     }
 
     /**
-     * Метод проверяет съела ли змейка еду.
-     * @returns {boolean} true если змейка находится на еде, иначе false.
+     * Заполняет ячейку в которую кликнул пользователь в событии event.
+     * @param {Event} event
+     * @param {HTMLElement} event.target
      */
-    didSnakeEatFood() {
-        return this.boardEl.querySelector('.food').classList.contains('snakeBody');
-    }
+    fillCell(event) {
+        // Получаем строку и колонку куда кликнули.
+        let row = +event.target.dataset.row;
+        let col = +event.target.dataset.col;
 
-    /**
-     * Метод возвращает тег td у которого нет класса snakeBody или food
-     * @returns {HTMLTableCellElement}
-     */
-    getRandomEmptyTd() {
-        const emptyTdElements = document.querySelectorAll('td:not(.snakeBody):not(.food)');
-        const randomEmptyTd = emptyTdElements[Math.floor(Math.random() * (emptyTdElements.length - 1))]
-        return randomEmptyTd;
-    }
-
-    /**
-     * Метод устанавливает новое случайное положение еды на игровом
-     * поле.
-     */
-    renderNewFood() {
-        const emptyTd = this.getRandomEmptyTd();
-        emptyTd.classList.add('food');
+        // Заполняем ячейку и ставим значение в массиве, в свойстве mapValues.
+        this.status.mapValues[row][col] = this.status.phase;
+        event.target.textContent = this.status.phase;
     }
 }

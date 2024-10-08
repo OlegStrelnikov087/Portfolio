@@ -1,30 +1,33 @@
-/** Здесь будет хранится статус игры, например играем мы, завершили или остановлено. */
 class Status {
     constructor() {
-        this.condition = 'paused';
-    }
-
-    /** Это значит что мы играем. */
-    setPlaying() {
-        this.condition = 'playing';
-    }
-
-    /** Это значит что игра на паузе. */
-    setPaused() {
-        this.condition = 'paused';
+        this.status = 'playing';
+        this.mapValues = [
+            ['', '', ''],
+            ['', '', ''],
+            ['', '', ''],
+        ];
+        this.phase = 'X';
     }
 
     /**
-     * @returns {boolean} если мы сейчас играем, тогда true, иначе false.
+     * Проверка что мы "играем", что игра не закончена.
+     * @returns {boolean} Вернет true, статус игры "играем", иначе false.
      */
-    isPlaying() {
-        return this.condition === 'playing';
+    isStatusPlaying() {
+        return this.status === 'playing';
     }
 
     /**
-     * @returns {boolean} если сейчас игра на паузе, тогда true, иначе false.
+     * Ставит статус игры в "остановлена".
      */
-    isPaused() {
-        return this.condition === 'paused';
+    setStatusStopped() {
+        this.status = 'stopped';
+    }
+
+    /**
+     * Меняет фигуру (крестик или нолик).
+     */
+    togglePhase() {
+        this.phase = this.phase === 'X' ? '0' : 'X';
     }
 }

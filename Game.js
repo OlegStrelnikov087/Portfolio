@@ -1,131 +1,79 @@
 class Game {
-    constructor() {
-        this.tickIdentifier = null;
-        this.messageEl = document.getElementById('message');
-    }
 
-    /** 
-     * Метод получает другие игровые объекты, которые нужны ему
-     * для работы.
-     * @param {Settings} settings 
-     * @param {Status} status
-     * @param {Board} board
-     * @param {Snake} snake
-     * @param {Menu} menu
-     * @param {Score} score
+    /**
+     * @param {Status} status 
+     * @param {Board} board 
      */
-    init(settings, status, board, snake, menu, score) {
-        this.settings = settings;
+    init(status, board) {
         this.status = status;
         this.board = board;
-        this.snake = snake;
-        this.menu = menu;
-        this.score = score;
     }
 
     /**
-     * Метод запускает игру.
+     * Обработчик события клика.
+     * @param {MouseEvent} event
      */
-    start() {
-        if (this.status.isPaused()) {
-            this.status.setPlaying();
-            this.tickIdentifier = setInterval(this.doTick.bind(this), 1000 / this.settings.speed);
-        }
-    }
-
-    /**
-     * Метод ставит игру на паузу.
-     */
-    pause() {
-        if (this.status.isPlaying()) {
-            this.status.setPaused();
-            this.stopGame();
-        }
-    }
-
-    /**
-     * Этот метод запускается каждую секунду и осуществляет:
-     * 1. перемещение змейки
-     * 2. проверяет проиграна/выиграна ли игра
-     * 3. увеличивает размер змейки если она ест еду
-     * 4. заново отрисовывает положение змейки и еды
-     */
-    doTick() {
-        this.snake.performStep();
-        if (this.isSnakeSteppedOntoItself()) {
-            this.stopGame();
-            this.setMessage("Вы проиграли");
+    cellClickHandler(event) {
+        // Если клик не нужно обрабатывать, уходим из функции.
+        if (!this.isCorrectClick(event)) {
             return;
         }
-        if (this.board.didSnakeEatFood()) {
-            this.snake.increaseBody();
-            this.score.renderCurrentScore(this.snake.body.length);
-            
-            if (this.isGameWon()) {
-                this.stopGame();
-                this.setMessage("Вы выиграли");
-                return;
-            }
-            
-            this.board.clearFood();
-            this.board.renderNewFood();
+        this.board.fillCell(event);
+        if (this.hasWon()) {
+            // Ставим статус в "остановлено".
+            this.status.setStatusStopped();
+            // Сообщаем о победе пользователя.
+            this.sayWonPhrase();
         }
-        this.board.clearSnake();
-        this.board.renderSnake();
+
+        // Меняем фигуру (крестик или нолик).
+        this.status.togglePhase();
     }
 
     /**
-     * Метод проверяет выиграна ли игра.
-     * @returns {boolean} если длина змейки достигла длины нужной
-     * для выигрыша, тогда true, иначе false.
+     * Проверка был ли корректный клик, что описан в событии event.
+     * @param {Event} event
+     * @returns {boolean} Вернет true в случае если статус игры "играем", клик что описан в объекте event был
+     * по ячейке и ячейка куда был произведен клик был по пустой ячейке.
      */
-    isGameWon() {
-        return this.snake.body.length == this.settings.winLength;
+    isCorrectClick(event) {
+        return this.status.isStatusPlaying() && this.board.isClickByCell(event) && this.board.isCellEmpty(event);
     }
 
     /**
-     * Метод проверяет съела ли змейка сама себя.
-     * @returns {boolean}
+     * Проверка есть ли выигрышная ситуация на карте.
+     * @returns {boolean} Вернет true, если игра выиграна, иначе false.
      */
-    isSnakeSteppedOntoItself() {
-        let cellArr = this.snake.body.map(function (cellCoords) {
-            return cellCoords.x.toString() + cellCoords.y.toString();
-        });
-        let head = cellArr.shift();
-        return cellArr.includes(head);
-    }
+    hasWon() {
+        return this.isLineWon({ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }) ||
+               this.isLineWon({ x: 0, y: 1 }, { x: 1, y: 1 }, { x: 2, y: 1 }) ||
+               this.isLineWon({ x: 0, y: 2 }, { x: 1, y: 2 }, { x: 2, y: 2 }) ||
 
-    stopGame() {
-        clearInterval(this.tickIdentifier);
-    }
+               this.isLineWon({ x: 0, y: 0 }, { x: 0, y: 1 }, { x: 0, y: 2 }) ||
+               this.isLineWon({ x: 1, y: 0 }, { x: 1, y: 1 }, { x: 1, y: 2 }) ||
+               this.isLineWon({ x: 2, y: 0 }, { x: 2, y: 1 }, { x: 2, y: 2 }) ||
 
-    /**
-     * В зависимости от нажатой кнопки (вверх, вниз, влево, вправо) будет 
-     * вызываться соответствующий метод.
-     * @param {KeyboardEvent} event 
-     */
-    pressKeyHandler(event) {
-        switch (event.key) {
-            case "ArrowUp":
-                this.snake.changeDirection('up');
-                break;
-            case "ArrowDown":
-                this.snake.changeDirection('down');
-                break;
-            case "ArrowLeft":
-                this.snake.changeDirection('left');
-                break;
-            case "ArrowRight":
-                this.snake.changeDirection('right');
-                break;
-        }
+               this.isLineWon({ x: 0, y: 0 }, { x: 1, y: 1 }, { x: 2, y: 2 }) ||
+               this.isLineWon({ x: 0, y: 2 }, { x: 1, y: 1 }, { x: 2, y: 0 });
     }
 
     /**
-     * Метод выводит сообщение на странице.
-     * @param {string} text 
+     * Проверка есть ли выигрышная ситуация на линии.
+     * @param {{x: int, y: int}} a 1-ая ячейка.
+     * @param {{x: int, y: int}} b 2-ая ячейка.
+     * @param {{x: int, y: int}} c 3-я ячейка.
+     * @returns {boolean} Вернет true, если линия выиграна, иначе false.
      */
-    setMessage(text) {
-        this.messageEl.innerText = text;
+    isLineWon(a, b, c) {
+        let value = this.status.mapValues[a.y][a.x] + this.status.mapValues[b.y][b.x] + this.status.mapValues[c.y][c.x];
+        return value === 'XXX' || value === '000';
+    }
+
+    /**
+     * Сообщает о победе.
+     */
+    sayWonPhrase() {
+        let figure = this.status.phase === 'X' ? 'Крестики' : 'Нолики';
+        alert(`${figure} выиграли!`);
     }
 }
